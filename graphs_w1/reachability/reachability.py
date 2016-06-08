@@ -4,6 +4,23 @@ import sys
 
 def reach(adj, x, y):
     #write your code here
+    #we want to start exploring at x, and if we've reached y, then exit true, else if we reach end, exit false
+    visited = set();
+    reachable = dfs(adj, x, y, visited)
+    return reachable
+
+def dfs(adj, u, y, visited):
+    visited.add(u);
+    neighbors = adj[u]
+    if y in neighbors:
+        #it means final vertex is reachable!
+        return 1
+    for v in neighbors:
+        if v not in visited:
+            reachable = dfs(adj, v, y, visited)
+            if reachable == 1:
+                return 1
+    #i've reached the end of all my descendant vertices and we could not reach y, so return 0
     return 0
 
 if __name__ == '__main__':
