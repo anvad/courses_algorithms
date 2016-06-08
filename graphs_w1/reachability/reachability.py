@@ -2,6 +2,7 @@
 
 
 #Good job! (Max time used: 0.05/5.00, max memory used: 9105408/536870912.)
+#Good job! (Max time used: 0.04/5.00, max memory used: 9105408/536870912.)
 
 
 import sys
