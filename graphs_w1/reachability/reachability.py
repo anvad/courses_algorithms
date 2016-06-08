@@ -1,5 +1,9 @@
 #Uses python3
 
+
+#Good job! (Max time used: 0.05/5.00, max memory used: 9105408/536870912.)
+
+
 import sys
 
 def reach(adj, x, y):
