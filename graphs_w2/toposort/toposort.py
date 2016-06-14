@@ -1,16 +1,30 @@
 #Uses python3
 
+#Good job! (Max time used: 1.03/10.00, max memory used: 39170048/536870912.)
+
 import sys
 
 def dfs(adj, used, order, x):
     #write your code here
-    pass
+    neighbors = adj[x]
+    for v in neighbors:
+        if used[v] == 0:
+            dfs(adj, used, order, v)
+    postVisit(used, order, x)
+    return
 
+def postVisit(used, order, x):
+    order.append(x) #add this node
+    used[x] = 1 #marking this vertex as removed from graph
 
 def toposort(adj):
     used = [0] * len(adj)
     order = []
     #write your code here
+    for u in range(len(adj)):
+        if used[u] == 0:
+            dfs(adj, used, order, u)
+    order.reverse()
     return order
 
 if __name__ == '__main__':
