@@ -1,16 +1,20 @@
 #Uses python3
 
 #Good job! (Max time used: 1.03/10.00, max memory used: 39170048/536870912.)
+#2nd run same code: Good job! (Max time used: 0.72/10.00, max memory used: 39174144/536870912.)
+#3rd run after removing call to postVisit: Good job! (Max time used: 0.66/10.00, max memory used: 39170048/536870912.)
 
 import sys
 
 def dfs(adj, used, order, x):
     #write your code here
+    used[x] = 1 #marking this vertex as removed from graph
     neighbors = adj[x]
     for v in neighbors:
         if used[v] == 0:
             dfs(adj, used, order, v)
-    postVisit(used, order, x)
+    #postVisit
+    order.append(x) #add this node
     return
 
 def postVisit(used, order, x):
