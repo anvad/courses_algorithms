@@ -5,6 +5,30 @@ import sys
 
 def negative_cycle(adj, cost):
     #write your code here
+    max_dist = sys.maxsize
+    dist = [max_dist for n in adj]
+    prev = [None for n in adj]
+
+    num_vertices = len(adj)
+    s = 0
+    dist[s] = 0
+    for i in range(num_vertices): #iterate up to n times where n = num_vertices
+        relaxed_in_cycle = False
+        for u in range(num_vertices): #go thru all edges and relax them
+            neighbors = adj[u]
+            num_neihgbors = len(neighbors)
+            neighbor_costs = cost[u]
+            du = dist[u]
+            for j in range(num_neihgbors):
+                v = neighbors[j]
+                du_w = du + neighbor_costs[j]
+                if dist[v] > du_w:
+                    dist[v] = du_w
+                    relaxed_in_cycle = True
+        if not relaxed_in_cycle: #if no edge was relaxed in one iteration thru all edges, no need to continue 
+            break
+    if relaxed_in_cycle: #if the last iteration (= nth iteration) relaxed some edge, it means there is a negative cycle
+        return 1
     return 0
 
 
