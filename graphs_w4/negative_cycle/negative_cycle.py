@@ -1,5 +1,7 @@
 #Uses python3
 
+#Good job! (Max time used: 2.17/10.00, max memory used: 11444224/536870912.)
+
 import sys
 
 
@@ -10,7 +12,7 @@ def negative_cycle(adj, cost):
     prev = [None for n in adj]
 
     num_vertices = len(adj)
-    s = 0
+    s = 0 #using 0th vertex as my starting point (this is arbitrary and doesn't matter since i really just want to detect presence of negative_cycle)
     dist[s] = 0
     for i in range(num_vertices): #iterate up to n times where n = num_vertices
         relaxed_in_cycle = False
@@ -27,7 +29,7 @@ def negative_cycle(adj, cost):
                     relaxed_in_cycle = True
         if not relaxed_in_cycle: #if no edge was relaxed in one iteration thru all edges, no need to continue 
             break
-    if relaxed_in_cycle: #if the last iteration (= nth iteration) relaxed some edge, it means there is a negative cycle
+    if relaxed_in_cycle: #if the last iteration (i.e. nth iteration) relaxed some edge, it means there is a negative cycle
         return 1
     return 0
 
