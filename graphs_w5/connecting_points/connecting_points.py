@@ -2,6 +2,7 @@
 
 #using Kruskal Good job! (Max time used: 0.17/10.00, max memory used: 10133504/536870912.)
 #using prim with array based priority queue Good job! (Max time used: 0.07/10.00, max memory used: 10129408/536870912.)
+#prim slightly optimized to avoid find dij in some cases Good job! (Max time used: 0.06/10.00, max memory used: 10133504/536870912.)
 
 import sys
 import math
@@ -41,9 +42,11 @@ def min_dist_pa(x, y):
         pqa[i] = (max_dist + 1, i) # setting this element to a value higher than max_dist, as a way to mark this vertex as extracted
         result = result + d_min
         for j in range(num_vertices):
-            if j != i: # making sure we calc edge weights (i.e. dij) with neighbors only, rather than with itself!
+            # making sure we calc edge weights (i.e. dij) with neighbors only, rather than with itself!
+            # also making sure to both calculating dij only if j is currently in priority queue
+            if (j != i) and (pqa[j][0] <= max_dist): # implies vertex j is in priQ 
                 dij = math.sqrt((x[i] - x[j])**2 + (y[i] - y[j])**2)
-                if (pqa[j][0] <= max_dist) and (cost[j] > dij): # implies vertex j is in priQ, and cost[j] > dij
+                if (cost[j] > dij):
                     cost[j] = dij
                     parent[j] = i
                     pqa[j] = (dij, j)
