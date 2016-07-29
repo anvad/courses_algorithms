@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
-# Good job! (Max time used: 1.37/7.00, max memory used: 159744000/536870912.)
+# Good job! (Max time used: 1.37/7.00, max memory used: 159744000/536870912.) <-- using Node class
+# Good job! (Max time used: 0.57/7.00, max memory used: 191537152/536870912.) <-- using dictionaries
 
 import sys
 
@@ -40,7 +41,7 @@ def build_trie2(patterns):
     return tree
 
 
-def prefix_trie_matching(text, patterns_trie):
+def prefix_trie_matching2(text, patterns_trie):
     node = patterns_trie[0] # root node
     i = 1
     for i, cur_symbol in enumerate(text):
@@ -51,12 +52,67 @@ def prefix_trie_matching(text, patterns_trie):
             #print("pattern found '{}'".format(text[:i]))
             return text[:i] # return matched prefix of given text
         elif (next_node_index > -1): # it means we found an edge with symbol matching cur_symbol
-            node = patterns_trie[next_node_index]
+            node = patterns_trie[next_node_index] # resetting node to point to next node
         else:
             return "" # no match found!
     # handling the case where the pattern matches the last character of the text
     # we are handling this separately since we get the next node only after we retrieved the last symbol from text
     if node.isleaf:
+        #print("pattern found '{}'".format(text[:i+1]))
+        return text[:i+1] # return matched prefix of given text
+    return "" # if i am here, it means we ran out of text before we finished matching the pattern
+
+
+def trie_matching2(text, patterns_trie):
+    results = []
+    for i in range(len(text)):
+        if prefix_trie_matching2(text[i:], patterns_trie):
+            results.append(i)
+    return results
+
+
+# Return the trie built from patterns
+# in the form of a dictionary of dictionaries,
+# e.g. {0:{'A':1,'T':2},1:{'C':3}}
+# where the key of the external dictionary is
+# the node ID (integer), and the internal dictionary
+# contains all the trie edges outgoing from the corresponding
+# node, and the keys are the letters on those edges, and the
+# values are the node IDs to which these edges lead.
+def build_trie(patterns):
+    tree = dict()
+    # write your code here
+    # let's create the root node
+    tree[0] = dict()
+    i = 1 # this is the node ID of each node we'll add to the trie
+    for pattern in patterns:
+        cur_node = tree[0] # the root node
+        for cur_symbol in pattern:
+            if cur_symbol in cur_node: # this symbol was found in current node, so go down the existing path
+                cur_node = tree[cur_node[cur_symbol]]
+            else: # this symbol was not found in current node, so add a new node/edge to the tree, at this node
+                cur_node[cur_symbol] = i # here i is the index of the new node
+                tree[i] = dict() # attached the new node to the outer dictionary
+                cur_node = tree[i] # now this symbol is part of tree, so go down this path
+                i += 1
+    return tree
+
+
+def prefix_trie_matching(text, patterns_trie):
+    node = patterns_trie[0] # root node
+    i = 1
+    for i, cur_symbol in enumerate(text):
+        if not len(node): # i.e. no outgoing edges from this node. so, this is a leaf node
+            #print("pattern found '{}'".format(text[:i]))
+            return text[:i] # return matched prefix of given text
+        elif (cur_symbol in node): # it means we found an edge with symbol matching cur_symbol
+            node = patterns_trie[node[cur_symbol]] # resetting node to point to next node
+        else:
+            return "" # no match found!
+
+    # handling the case where the pattern matches the last character of the text
+    # we are handling this separately since we get the next node only after we retrieved the last symbol from text
+    if not len(node):
         #print("pattern found '{}'".format(text[:i+1]))
         return text[:i+1] # return matched prefix of given text
     return "" # if i am here, it means we ran out of text before we finished matching the pattern
@@ -72,8 +128,10 @@ def trie_matching(text, patterns_trie):
 def solve(text, n, patterns):
     result = []
     # write your code here
-    patterns_trie = build_trie2(patterns)
+    patterns_trie = build_trie(patterns)
     result = trie_matching(text, patterns_trie)
+    #patterns_trie = build_trie2(patterns)
+    #result = trie_matching2(text, patterns_trie)
     return result
 
 
