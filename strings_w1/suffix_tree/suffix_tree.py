@@ -34,6 +34,7 @@ import sys
 #        label: $ => (3, -1)
 
 
+
 NA = -1
 # here's a mapping from text/pattern alphabet to an index in the node's 'next' list
 #alpha_to_index = {'A':0, 'C':1, 'G':2, 'T':3, '$':4}
@@ -50,18 +51,18 @@ class NodeOld:
         #self.patternEnd = False
         #self.isleaf = True
 
+        
+class Node:
+    def __init__ (self, label_start=0, label_length=0, index=0):
+        self.next = {} # key = first symbol in label, value = index in tree
+        self.label = (label_start, label_length) # startIndex, length in original text
 
-# Return the trie built from patterns
-# in the form of a list of Node objects,
-# e.g. {nodeObj,nodeObj}
-# the nodeObj is an instance of the Node class
-# amd contains all the trie edges outgoing from that node
-# extended to handle cases where one of the patterns is a prefix of another pattern
+
 def build_suffix_trie(text):
     trie = [] # contains a list of nodes. 0th node is root node. other indices point to other nodes
     # write your code here
     # let's create the root node
-    trie.append(Node())
+    trie.append(NodeOld())
     for i in range(len(text)):
         pattern = text[i:]
         cur_node = trie[0] # the root node
@@ -77,53 +78,12 @@ def build_suffix_trie(text):
                     cur_node.next = cur_node_next
                 cur_node_next[next_index] = len(trie)
                 #cur_node.isleaf = False
-                trie.append(Node())
+                trie.append(NodeOld())
                 cur_node = trie[-1] # now this symbol is part of tree, so go down this path
         # now we've explored this pattern, so let's set the patternEnd flag
         #cur_node.patternEnd = True
         cur_node.startIndex = i # this is the startIndex of the text suffix that ends at this leaf node
     return trie
-
-
-def compress_trie(trie):
-    tree = {}
-    # now traverse the trie using DFS, and for each node that has only one outgoing edge, 
-    #   remove it
-    #   update the child node's label by concatenating this node's label with the child's label
-    # right now labels are stored as positional data in node.next list - i.e. as labels on outgoing edges
-    # we need to store it on the node itself, as data from incoming edge, since we'll always have only one incoming edge
-    
-    stack = [] # using a list as a stack to do non-recursive DFS
-    tree[0] = trie[0]
-    trie[0].label = ""
-    stack.append( (0, trie[0]) )
-    label = ""
-    while len(stack) > 0:
-        node_index, node = stack.pop()
-        if label == "":
-            label = node.label
-            start_index = node_index
-        num_outgoing_edges = 0
-        node_next = node.next
-        if node_next:
-            for next_index_index, next_index in enumerate(node_next):
-                if next_index > -1:
-                    child_node = trie[next_index]
-                    outgoing_edge_label = index_to_alpha[next_index_index]
-                    child_node.label = outgoing_edge_label
-                    stack.append( (next_index, child_node) )
-                    num_outgoing_edges += 1
-        if num_outgoing_edges == 1:
-            label += outgoing_edge_label
-        else:
-            # we've reached the end of a chain (or reached a node with multiple outgoing edges), so consolidate
-            node_to_keep = trie[start_index]
-            node_to_keep.next = trie[node_index].next # we'll need to retain pointers to remaining nodes in chain
-            node_to_keep.label = label
-            tree[start_index] = node_to_keep # add this node to the tree
-            #print("start-end:label: {}-{}:{}".format(start_index, node_index, label))
-            label = ""
-    return tree
 
 
 def print_trie(trie):
@@ -134,46 +94,37 @@ def print_trie(trie):
                     print("{}->{}:{}".format(index, next_index, index_to_alpha[next_index_index]))
 
 
-def print_tree(tree):
-    for index, node in tree.items():
-        print("{}-{}:{}".format(index, node.next, node.label))
-
-
-class Node:
-    def __init__ (self, label_start=0, label_length=0, index=0):
-        self.next = {} # key = first symbol in label, value = index in tree
-        self.label = (label_start, label_length) # startIndex, length in original text
-        self.lt = text[label_start : label_start + label_length]
-        self.index = index
-
-    def update_label(self, label_start, label_length):
-        self.label = (label_start, label_length)
-        self.lt = text[label_start : label_start + label_length]
-
-
 def add_child(tree, parent, label_start, label_length):
     len_tree = len(tree)
     child = Node(label_start, label_length)
     child_symbol = text[label_start]
-    parent.next[child_symbol] = len_tree
-    child.index = len_tree
+    if child_symbol in parent.next:
+        print("parent node [{}] already has a child [{}] with symbol {} but still adding child [{}]" \
+            .format(parent.index, parent.next[child_symbol], child_symbol, len_tree))
+        tree.append(child)
+        print_tree(tree)
+        sys.exit()
+    parent.next[child_symbol] = len_tree # here, i am assuming that the parent was a leaf node originally
     tree.append(child)
+    # additional debugging statements to be removed later
+    child.index = len_tree
+
 
 def add_pattern_to_tree(tree, pattern, i):
     # starting from root node, traverse path, add new node, or split existing node in to two, then return
+    print("adding pattern {}".format(pattern))
     node = tree[0] # start at root node
     while True:
         symbol = pattern[0] # get the first char of pattern
         if symbol in node.next:
             # implies this node has a child whose label starts with symbol, so pursue that path
-            # get longest prefix match between given pattern and label; 
-            #   Note: may need to shorten pattern as we go down the tree
-            #length_matched = len([char1 for char1, char2 in zip(pattern, node.label) if char1 == char2])
+            
             node = tree[node.next[symbol]] # immediately move to the matching node
             node_label = node.label
-            start = node_label[0]
-            length = node_label[1]
-            #length_matched = sum(1 for char1, char2 in zip(pattern, text[start : start + length]) if char1 == char2)
+            start, length = node_label
+            
+            # get longest prefix match between given pattern and label; 
+            #   Note: may need to shorten pattern as we go down the tree
             length_matched = 0
             for char1, char2 in zip(pattern, text[start : start + length]):
                 if char1 == char2:
@@ -184,6 +135,7 @@ def add_pattern_to_tree(tree, pattern, i):
             if length_matched == length:
                 pattern = pattern[length_matched:] # we shorten the pattern to search for since part of it's already in the tree
                 i += length_matched # and we also need to advance the start index of label we'll attach
+                print("chopped pattern to {}".format(pattern))
                 continue
 
             # add first child
@@ -207,20 +159,28 @@ def add_pattern_to_tree(tree, pattern, i):
                 label_length = len(pattern) - length_matched)
 
             # update this node's label
-            #node.label = (start, length_matched)
-            node.update_label(start, length_matched)
+            node.label = (start, length_matched)
+            #node.update_label(start, length_matched)
 
             # now return!
             return
         else:
             # implies we'll add a new child node since none exists with this symbol
             # also update current node's next dictionary, to point to this node, for the current symbol
-            startIndex, length = i, len(pattern)
-            new_node = Node(startIndex, length, len(tree))
-            node.next[symbol] = len(tree)
-            tree.append(new_node)
+            #startIndex, length = i, len(pattern)
+            #new_node = Node(startIndex, length)
+            #node.next[symbol] = len(tree)
+            #tree.append(new_node)
+            add_child(tree, node,
+                label_start = i,
+                label_length = len(pattern))
             return
-    pass
+
+
+
+def print_tree(tree):
+    for index, node in enumerate(tree):
+        print("{}-{}:{}".format(index, node.next, text[node.label[0] : node.label[0] + node.label[1]]))
 
 
 def build_suffix_tree(text):
@@ -235,9 +195,10 @@ def build_suffix_tree(text):
 
     # adding root node first, with original text as the first suffix
     root_node = Node()
+    root_node.index = 0
     suffix_tree.append(root_node)
     
-    # now adding each remaining suffix pattern to the tree
+    # now adding each suffix pattern to the tree
     for i in range(len(text)):
         pattern = text[i:]
         # now traverse tree, adding new node, or splitting existing node
@@ -245,14 +206,16 @@ def build_suffix_tree(text):
     # replaced the above code with a generator comprehension :)
     #result = (text[node.label[0]:node.label[0]+node.label[1]] for node in suffix_tree.values())
     labels = (node.label for node in suffix_tree)
-    result = (text[start:start+length] for start, length in labels if length)
+    #result = (text[start:start+length] for start, length in labels if length)
+
+    print_tree(suffix_tree)
 
     return result
 
 
 if __name__ == '__main__':
-    #text = sys.stdin.readline().strip()
-    text = "ATAAATG$"
+    text = sys.stdin.readline().strip()
+    #text = "ATAAATG$"
     #text = "ACA$"
     result = build_suffix_tree(text)
     print("\n".join(result))
