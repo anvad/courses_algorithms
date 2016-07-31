@@ -2,6 +2,7 @@
 
 # Good job! (Max time used: 3.21/8.00, max memory used: 12681216/1073741824.) <-- orig file 
 # Good job! (Max time used: 2.22/8.00, max memory used: 12677120/1073741824.) <-- removed a couple if sys.exit if checks
+# Good job! (Max time used: 2.26/8.00, max memory used: 12664832/1073741824.) <-- removed one if check in add_child
 
 import sys
 import queue # for BFS in find_shortest_nonshared
@@ -49,11 +50,6 @@ def add_child(text, tree, parent,
     parent.next[child_symbol] = len_tree
     tree.append(child)
 
-    if node_next: # implies we changed parent of some nodes, so update their prev values to newly added child's index
-        for child_node_index in node_next.values():
-            child_node = tree[child_node_index]
-            child_node.prev = len_tree
-
 
 def add_pattern_to_tree(tree, text, pattern, suffix_start_pos, has_text2):
     """Digests given pattern and adds nodes to given suffix tree."""
@@ -62,8 +58,7 @@ def add_pattern_to_tree(tree, text, pattern, suffix_start_pos, has_text2):
     #print("adding pattern {}".format(pattern))
     i = suffix_start_pos # we'll use a different var since "i" changes, and we need a reference to orig value
     node = tree[0] # start at root node
-    if has_text2:
-        pass
+
     while True:
         symbol = pattern[0] # get the first char of pattern
         if symbol in node.next:
@@ -104,7 +99,14 @@ def add_pattern_to_tree(tree, text, pattern, suffix_start_pos, has_text2):
 
             if node.next: # implies this node has children!
                 child1_node_next = node.next
+                len_tree = len(tree)
                 node.next = {} # re-assigning node.next to new empty dictionary
+
+                # since child1 will become the new parent of node's children, 
+                #   updating these children's parent index, to point to new child
+                for child_node_index in child1_node_next.values():
+                    child_node = tree[child_node_index]
+                    child_node.prev = len_tree
             else:
                 child1_node_next = {}
 
@@ -202,9 +204,9 @@ def find_shortest_nonshared(tree, text, string1_delim):
                     prev_node = tree[prev_node.prev]
                 #print("shortest non-shared-len", shortest_nonshared_len)
                 return "".join(reversed(shortest_nonshared))
-            else:
-                pass
-                #print("i shouldn't be here! node [{}] label '{}' has hash but has_text2 is false!".format(child_node.index, child_node.has_text2) )
+            #else:
+            #    pass
+            #    #print("i shouldn't be here! node [{}] label '{}' has hash but has_text2 is false!".format(child_node.index, child_node.has_text2) )
     
 
 def build_suffix_tree(text):
