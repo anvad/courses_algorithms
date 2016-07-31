@@ -1,28 +1,15 @@
 # python3
 
 # Good job! (Max time used: 3.21/8.00, max memory used: 12681216/1073741824.) <-- orig file 
+# Good job! (Max time used: 2.22/8.00, max memory used: 12677120/1073741824.) <-- removed a couple if sys.exit if checks
 
 import sys
 import queue # for BFS in find_shortest_nonshared
 
-# the trie or tree is a directed graph with a root
-# so, why not store is as an adjacency list of nodes?
-# we'll have a master list of nodes. index 0 points to root node. all other indices point to other nodes
-# but once we form a tree, we could have edges with longer labels (i.e. more than one char long)
-# also, we'll store label start-index and length, rather than actual text, to save memory
-# in such cases, the next list will point to first char of the label for the edge to the next node
-# the label on a node, really belongs to the incoming edge. 
-#    Since, in our case, we'll only ever have one incoming edge on any given node, 
-#    it was easier to store the label on the node, rather than create explicit edge objects 
-# e.g. process string ACA$
-# we'll start with 1 node and look at suffix ACA$: 
-#    root node (node0) with 
-#        label: "" => (0,0)
-#        next:  {'A':1}
-#    node 1 with
-#        label: "ACA$" => (x,-1 or len_suffix) # -1 or len_suffix as the 2nd element of the lable tuple implies leaf node
-#        next: {}
-# then, we'll look at next suffix CA$, etc.
+# build suffix_tree, marking each node that is needed to represent symbols from the second text
+#   during build, also capture previous (i.e. parent node's index), so we can travel back from any node to the root
+# then, do weighted BFS to search for (the closest to root) node, whose symbol is not part of second text
+# then, using the prev (previous) values, re-construct the non-shared string
 
 
 class Node:
@@ -53,16 +40,16 @@ def add_child(text, tree, parent,
     child = Node(node_next, label_start, label_length, prev, len_tree, suffix_start_pos, has_text2)
 
     child_symbol = text[label_start]
-    if child_symbol in parent.next:
-        print("parent node [{}] already has a child [{}] with symbol {} but still adding child [{}]" \
-            .format(parent.index, parent.next[child_symbol], child_symbol, len_tree))
-        tree.append(child)
-        print_tree(tree, text)
-        sys.exit()
+    #if child_symbol in parent.next:
+    #    print("parent node [{}] already has a child [{}] with symbol {} but still adding child [{}]" \
+    #        .format(parent.index, parent.next[child_symbol], child_symbol, len_tree))
+    #    tree.append(child)
+    #    print_tree(tree, text)
+    #    sys.exit()
     parent.next[child_symbol] = len_tree
     tree.append(child)
 
-    if node_next: # implies we changed parents of some nodes, so update their prev values to newly add child's index
+    if node_next: # implies we changed parent of some nodes, so update their prev values to newly added child's index
         for child_node_index in node_next.values():
             child_node = tree[child_node_index]
             child_node.prev = len_tree
@@ -85,8 +72,7 @@ def add_pattern_to_tree(tree, text, pattern, suffix_start_pos, has_text2):
             node = tree[node.next[symbol]] # immediately move to the matching node
             node_has_text2 = node.has_text2 # saving original value for use in creating first child
             node.has_text2 = has_text2 # setting this to new value since this node is being re-visited
-            node_label = node.label
-            start, length = node_label
+            start, length = node.label
 
             # get longest prefix match between given pattern and label; 
             #   Note: may need to shorten pattern as we go down the tree
@@ -104,10 +90,10 @@ def add_pattern_to_tree(tree, text, pattern, suffix_start_pos, has_text2):
                                                    # part of it's already in the tree
                 i += length_matched # and we also need to advance the start index of label we'll attach
                 #print("chopped pattern to '{}' on node [{}]".format(pattern, node.index))
-                if not pattern:
-                    print("somehow chopped down pattern to empty string")
-                    print_tree(tree, text)
-                    sys.exit()
+                #if not pattern:
+                #    print("somehow chopped down pattern to empty string")
+                #    print_tree(tree, text)
+                #    sys.exit()
                 continue
 
             # if i am here, it implies pattern and current node's incoming edge's label matched partially
@@ -176,13 +162,14 @@ def print_leaves(tree, text):
                 text[node.label[0] : node.label[0] + node.label[1]]))
 
 
-def find_shortest_nonshared(tree, text):
+def find_shortest_nonshared(tree, text, string1_delim):
     shortest_nonshared = ""
     shortest_nonshared_len = 0
     # traverses tree till we land on first node where has_text2 is False
-    # do BFS
+    # do weighted BFS using node's label's length as weight (lower weight preferred) - shortest path first
     pq = queue.PriorityQueue()
-    pq.put( (0, 0) ) # second value is a node, first value is the index into suffix, to get to this node
+    # putting root node into queue, as the first item
+    pq.put( (0, 0) ) # second value is a node_index, first value is the index into suffix, to get to this node
     while (pq.qsize() > 0):
         suffix_index, node_index = pq.get()
         node = tree[node_index]
@@ -190,25 +177,18 @@ def find_shortest_nonshared(tree, text):
         #    (text[node.label[0] : node.label[0] + node.label[1]]),
         #    suffix_index))
 
-        #print("adding label from node [{}] to shortest_nonshared".format(node.index))
-        #shortest_nonshared += text[node.label[0] : node.label[0] + node.label[1]] # appending incoming edge's text, 
-                                                                                  # since this text is shared with text2
         # sorting the child nodes based on their lengths, since we want to visit shorter length children first
-        #sorted_children = sorted( ((tree[i].label[1], i) for i in node.next.values()) )
         child_node_indices = (i for i in node.next.values())
-        #for length,child_node_index in sorted_children:
         for child_node_index in child_node_indices:
             child_node = tree[child_node_index]
             if child_node.has_text2:
                 # this child node too has text that is shared with text2, so add it to queue
-                #pq.put( (suffix_index + child_node.label[1], child_node) )
+                # remember that the args to priority queue must implement the comparable protocol
+                #   hence, we can't store the Node object, but instead we store the node index
                 pq.put( (suffix_index + child_node.label[1], child_node_index) )
                 #print("put node [{}] with length {} in queue".format(child_node.index, child_node.label[1]))
-            elif text[child_node.label[0]] != "#":
+            elif text[child_node.label[0]] != string1_delim:
                 # found a child node that does not have text2, so return string made up so far
-                #print("adding label from node [{}] to shortest_nonshared".format(child_node.index))
-                #shortest_nonshared += text[child_node.label[0]] # added one symbol from this node 
-                                                          # to make this string non-shared with text2
                 shortest_nonshared_len = suffix_index + 1
                 #print("ready to break on node [{}]".format(child_node.index))
 
@@ -255,7 +235,7 @@ def build_suffix_tree(text):
         add_pattern_to_tree(suffix_tree, text, pattern, i, has_text2 = has_text2)
 
     # using generator comprehension :)
-    labels = (node.label for node in suffix_tree)
+    #labels = (node.label for node in suffix_tree)
     #result = (text[start : start + length] for start, length in labels if length)
 
     #print_leaves(suffix_tree, text)
@@ -263,11 +243,19 @@ def build_suffix_tree(text):
     #print_tree(suffix_tree, text)
     #print("\n--------------------------------------------------------\n")
 
-    shortest_nonshared_substring = find_shortest_nonshared(suffix_tree, text)
+    #shortest_nonshared_substring = find_shortest_nonshared(suffix_tree, text)
     #print("shortest_nonshared_substring = {}".format(shortest_nonshared_substring))
 
-    return shortest_nonshared_substring
+    #return shortest_nonshared_substring
+    return suffix_tree
 
+
+def solve(p, q):
+    string1_delim = "#"
+    string2_delim = "$"
+    text = "".join([p, string1_delim, q, string2_delim])
+    suffix_tree = build_suffix_tree(text)
+    return find_shortest_nonshared(suffix_tree, text, string1_delim)
 
 def main():
     #text = sys.stdin.readline().strip()
@@ -278,10 +266,8 @@ def main():
     #text = "CCAAGCTGCTAGAGG#CATGCTGGGCTGGCT$"
     p = sys.stdin.readline ().strip ()
     q = sys.stdin.readline ().strip ()
-    text = "".join([p, "#", q, "$"])
-    result = build_suffix_tree(text)
-    print(result)
-    #print("\n".join(result))
+    ans = solve(p, q)
+    sys.stdout.write(ans + '\n')
 
 
 if __name__ == '__main__':
