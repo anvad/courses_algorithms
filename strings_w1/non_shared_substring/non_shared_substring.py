@@ -3,6 +3,7 @@
 # Good job! (Max time used: 3.21/8.00, max memory used: 12681216/1073741824.) <-- orig file 
 # Good job! (Max time used: 2.22/8.00, max memory used: 12677120/1073741824.) <-- removed a couple if sys.exit if checks
 # Good job! (Max time used: 2.26/8.00, max memory used: 12664832/1073741824.) <-- removed one if check in add_child
+# Good job! (Max time used: 2.29/8.00, max memory used: 12640256/1073741824.) <-- removed call to add_child
 
 import sys
 import queue # for BFS in find_shortest_nonshared
@@ -97,9 +98,11 @@ def add_pattern_to_tree(tree, text, pattern, suffix_start_pos, has_text2):
             # child2 will have the pattern's remaining part
             # if current node already had children, then these children will now belong to child1 
 
+            parent_index = node.index
+            len_tree = len(tree)
+
             if node.next: # implies this node has children!
                 child1_node_next = node.next
-                len_tree = len(tree)
                 node.next = {} # re-assigning node.next to new empty dictionary
 
                 # since child1 will become the new parent of node's children, 
@@ -108,23 +111,48 @@ def add_pattern_to_tree(tree, text, pattern, suffix_start_pos, has_text2):
                     child_node = tree[child_node_index]
                     child_node.prev = len_tree
             else:
-                child1_node_next = {}
+                child1_node_next = {}            
 
             # add first child
-            add_child(text, tree, node, 
-                label_start = start + length_matched, 
+            #add_child(text, tree, node, 
+            #    label_start = start + length_matched, 
+            #    label_length = length - length_matched,
+            #    node_next = child1_node_next,
+            #    suffix_start_pos = node.suffix_start_pos, 
+            #    has_text2 = node_has_text2)
+
+            label_start = start + length_matched
+            tree.append(
+                Node(node_next = child1_node_next,
+                label_start = label_start,
                 label_length = length - length_matched,
-                node_next = child1_node_next,
-                suffix_start_pos = node.suffix_start_pos, 
+                prev = parent_index,
+                index = len_tree,
+                suffix_start_pos = node.suffix_start_pos,
                 has_text2 = node_has_text2)
+            )
+            node.next[text[label_start]] = len_tree
+            len_tree += 1
 
             # add second child
-            add_child(text, tree, node, 
-                label_start = i + length_matched, 
+            #add_child(text, tree, node, 
+            #    label_start = i + length_matched, 
+            #    label_length = len(pattern) - length_matched,
+            #    node_next = {},
+            #    suffix_start_pos = suffix_start_pos, 
+            #    has_text2 = has_text2)
+
+            label_start = i + length_matched
+            tree.append(
+                Node(node_next = {},
+                label_start = label_start,
                 label_length = len(pattern) - length_matched,
-                node_next = {},
-                suffix_start_pos = suffix_start_pos, 
+                prev = parent_index,
+                index = len_tree,
+                suffix_start_pos = suffix_start_pos,
                 has_text2 = has_text2)
+            )
+            node.next[text[label_start]] = len_tree
 
             # update this node's label
             node.label = (start, length_matched)
@@ -134,13 +162,27 @@ def add_pattern_to_tree(tree, text, pattern, suffix_start_pos, has_text2):
         else:
             # implies we'll add a new child node since none exists with this symbol
             # also update current node's next dictionary, to point to this node, for the current symbol
-            add_child(text, tree, node,
+            
+            #add_child(text, tree, node,
+            #    label_start = i,
+            #    label_length = len(pattern),
+            #    node_next = {},
+            #    suffix_start_pos = suffix_start_pos, 
+            #    has_text2 = has_text2)
+
+            len_tree = len(tree)
+            tree.append(
+                Node(node_next = {},
                 label_start = i,
                 label_length = len(pattern),
-                node_next = {},
-                suffix_start_pos = suffix_start_pos, 
+                prev = node.index,
+                index = len_tree,
+                suffix_start_pos = suffix_start_pos,
                 has_text2 = has_text2)
+            )
+            node.next[text[i]] = len_tree
 
+            # update this node
             node.suffix_start_pos = -1 # removing this node's suffix_start_pos as this is not a leaf anymore
             
             return
