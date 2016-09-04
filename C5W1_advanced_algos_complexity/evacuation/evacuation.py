@@ -1,5 +1,9 @@
 # python3
 
+
+#Good job! (Max time used: 1.34/45.00, max memory used: 12095488/536870912.)
+
+
 import sys
 import queue
 import datetime
@@ -51,7 +55,7 @@ class FlowGraph:
         # It turns out that id ^ 1 works for both cases. Think this through!
         self.edges[id_].flow += flow
         self.edges[id_ ^ 1].flow -= flow
-        e = self.edges[id_]
+        #e = self.edges[id_]
         #print("adding flow '{}' from node '{}' to '{}'. Remaining capacity = {}".format(
         #    flow, e.u + 1, e.v + 1, e.capacity - e.flow))
 
@@ -73,10 +77,12 @@ def bfs(graph, S, T):
     #print("S={}, T={}".format(S, T))
     max_possible_flow = 2 * 10 ** 8
     q = queue.Queue()
-    q.put( (S,[],[0],max_possible_flow) )
+    #q.put( (S,[],[0],max_possible_flow) )
+    q.put( (S, [], max_possible_flow) ) # current node, list of edges leading in to current node, max_flow along path so far
     visited_edges = set()
     while not q.empty():
-        node_id, edges_in_path, nodes_in_path, max_flow_in_path_orig = q.get()
+        #node_id, edges_in_path, nodes_in_path, max_flow_in_path = q.get()
+        node_id, edges_in_path, max_flow_in_path = q.get()
         #find all neighbors of this node, and add those neighbors to the queue that have available capacity
         neighboring_edge_ids = graph.get_ids(node_id) # finds all outgoing edges
         for ne_id in neighboring_edge_ids:
@@ -97,20 +103,21 @@ def bfs(graph, S, T):
             if avail_capacity > 0:
                 new_edges_in_path = edges_in_path.copy()
                 new_edges_in_path.append(ne_id)
-                max_flow_in_path = max_flow_in_path_orig
-                if avail_capacity < max_flow_in_path_orig:
+                new_max_flow_in_path = max_flow_in_path
+                if avail_capacity < max_flow_in_path:
                     #print("avail_capacity '{}' between nodes {} and {} is lower than current path capacity {}".format(
-                    #    avail_capacity, ne.u+1, ne.v+1, max_flow_in_path_orig
+                    #    avail_capacity, ne.u+1, ne.v+1, max_flow_in_path
                     #))
-                    max_flow_in_path = avail_capacity
+                    new_max_flow_in_path = avail_capacity
                 #new_nodes_in_path = nodes_in_path.copy()
                 #new_nodes_in_path.append(ne.v)
                 #q.put( (ne.v, new_edges_in_path, new_nodes_in_path, max_flow_in_path) )
-                q.put( (ne.v, new_edges_in_path, nodes_in_path, max_flow_in_path) )
+                #q.put( (ne.v, new_edges_in_path, nodes_in_path, max_flow_in_path) )
+                q.put( (ne.v, new_edges_in_path, new_max_flow_in_path) )
                 #print("path so far", new_nodes_in_path)
                 if ne.v == T:
                     #print("new_nodes_in_path", new_nodes_in_path)
-                    return new_edges_in_path, max_flow_in_path
+                    return new_edges_in_path, new_max_flow_in_path
 
     #print("no viable route found from S to T")
     return [],0
@@ -137,6 +144,6 @@ def main():
 
 
 if __name__ == '__main__':
-    a = datetime.datetime.now()
+    #a = datetime.datetime.now()
     main()
-    print("time taken: ", datetime.datetime.now() - a)
+    #print("time taken: ", datetime.datetime.now() - a)
