@@ -1,0 +1,10 @@
+// Place your settings in this file to overwrite default and user settings.
+{
+    "python.pythonPath": "c:\\Program Files (x86)\\Python35-32\\python.exe",
+    "python.autoComplete.extraPaths": [
+        "c:\\Program Files (x86)\\Python35-32",
+        "c:\\Program Files (x86)\\Python35-32\\Lib",
+        "c:\\Program Files (x86)\\Python35-32\\libs",
+        "c:\\Program Files (x86)\\Python35-32\\Scripts"
+    ]
+}

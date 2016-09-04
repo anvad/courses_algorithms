@@ -17,7 +17,7 @@
             "name": "Python Console App",
             "type": "python",
             "request": "launch",
-            "pythonPath": "C:\\Users\\anil\\AppData\\Local\\Programs\\Python\\Python35-32\\python.exe",
+            "pythonPath": "c:\\Program Files (x86)\\Python35-32\\python.exe",
             "stopOnEntry": true,
             "program": "${file}",
             "externalConsole": true,
