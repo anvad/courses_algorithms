@@ -111,7 +111,7 @@ def bfs(graph, S, T):
                 q.put( (ne.v, new_edges_in_path, new_nodes_in_path, max_flow_in_path) )
                 #q.put( (ne.v, new_edges_in_path, nodes_in_path, max_flow_in_path) )
                 #q.put( (ne.v, new_edges_in_path, new_max_flow_in_path) )
-                print("path so far", new_nodes_in_path)
+                #print("path so far", new_nodes_in_path)
                 
 
     #print("no viable route found from S to T")
@@ -163,16 +163,17 @@ class MaxMatching:
         S = 0
         T = m + n + 1
         graph = FlowGraph(vertex_count)
-        for i in range(n):
-            graph.add_edge(0, i+1, 1) # adding edges from S to vertices in left column of bipartite graph
+        for j in range(m-1, -1, -1):
+            graph.add_edge(n+j+1, T, 1) # adding edges from vertices in right column to T
 
-        for i in range(n):
-            for j in range(m):
+        for i in range(n-1, -1, -1):
+            for j in range(m-1, -1, -1):
                 if adj_matrix[i][j]:
                     graph.add_edge(i+1, n+j+1, 1) # adding edges from left column to right column
 
-        for j in range(m):
-            graph.add_edge(n+j+1, T, 1) # adding edges from vertices in right column to T
+        for i in range(n-1, -1, -1):
+            graph.add_edge(0, i+1, 1) # adding edges from S to vertices in left column of bipartite graph
+        
         
         #graph.print_edges()
         print("{} created graph".format(datetime.datetime.now()))
@@ -184,8 +185,10 @@ class MaxMatching:
 
         # now to find all edges with flow = 1 going from vertex in left column to a vertex in right column
         # so, ignore first 2*n edges and last 2*m edges and also every odd edge as that is backward pointing
-        first_edge = 2 * n
-        last_edge = len(graph.edges) - (2 * m)
+        #first_edge = 2 * n
+        #last_edge = len(graph.edges) - (2 * m)
+        first_edge = 2 * m
+        last_edge = len(graph.edges) - (2 * n)
         for edge_id in range(first_edge, last_edge, 2):
             edge = graph.edges[edge_id]
             if edge.flow == 1:
