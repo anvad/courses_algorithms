@@ -1,7 +1,12 @@
 # python3
 
+# using BFS Good job! (Max time used: 3.82/5.00, max memory used: 15478784/536870912.)
+# using DSF Good job! (Max time used: 3.31/5.00, max memory used: 14782464/536870912.)
+
 import queue
 import datetime
+
+prev_time = datetime.datetime.now()
 
 class Edge:
 
@@ -32,6 +37,25 @@ class FlowGraph:
         self.graph[to_].append(len(self.edges))
         self.edges.append(backward_edge)
 
+    def add_fwd_edge(self, from_, to_, capacity):
+        # Note that we first append a forward edge and then a backward edge,
+        # so all forward edges are stored at even indices (starting from 0),
+        # whereas backward edges are stored at odd indices.
+        forward_edge = Edge(from_, to_, capacity)
+        #backward_edge = Edge(to_, from_, 0)
+        self.graph[from_].append(len(self.edges))
+        self.edges.append(forward_edge)
+        #self.graph[to_].append(len(self.edges))
+        #self.edges.append(backward_edge)
+
+    def add_rev_edges(self):
+        num_edges = len(self.edges)
+        for id_ in range(num_edges):
+            edge = self.edges[id_]
+            backward_edge = Edge(edge.v, edge.u, 0)
+            self.graph[edge.v].append(len(self.edges))
+            self.edges.append(backward_edge)
+
     def size(self):
         return len(self.graph)
 
@@ -56,8 +80,44 @@ class FlowGraph:
     
     def print_edges(self):
         for edge in self.edges:
-            if edge.capacity:
+            #if edge.capacity:
+            print("{} ----{}/{}---> {}".format(edge.u, edge.flow, edge.capacity, edge.v))
+
+    def print_edges_by_node(self):
+        for node_id in range(self.size()):
+            edge_ids = self.get_ids(node_id)
+            for edge_id in edge_ids:
+                edge = self.get_edge(edge_id)
                 print("{} ----{}/{}---> {}".format(edge.u, edge.flow, edge.capacity, edge.v))
+
+def dfs(graph, S, T):
+    """DFS to get from node S to node T, given a graph. Made specifically for bipartite graph"""
+    max_flow_in_path = 1 # since this bipartite graph, all edges have capacity 1
+    stack = [] # DFS... so using stack
+    parent_edges = [-1] * len(graph.edges)
+    incoming_edge = -1
+    stack.append( (S, incoming_edge) )
+    visited_edges = set()
+    while len(stack):
+        node_id, incoming_edge = stack.pop()
+
+        neighboring_edge_ids = graph.get_ids(node_id) # finds all outgoing edges
+        for ne_id in neighboring_edge_ids:
+            if ne_id in visited_edges:
+                #print("edge {} already visited".format(ne_id))
+                continue
+            visited_edges.add(ne_id)
+
+            ne = graph.get_edge(ne_id)
+            avail_capacity = ne.capacity - ne.flow
+            if avail_capacity > 0:
+                parent_edges[ne_id] = incoming_edge
+                if ne.v == T:
+                    return parent_edges, ne_id, max_flow_in_path
+
+                stack.append( (ne.v, ne_id) )
+
+    return parent_edges, -1, 0
 
 
 def bfs(graph, S, T):
@@ -66,15 +126,16 @@ def bfs(graph, S, T):
        only edges that are not saturated are considered viable
     """
     #print("S={}, T={}".format(S, T))
-    max_possible_flow = 2 * 10 ** 8
+    max_possible_flow = 1 #2 * 10 ** 8
     q = queue.Queue()
-    q.put( (S,[],[0],max_possible_flow) )
-    #q.put( (S, [], max_possible_flow) ) # current node, list of edges leading in to current node, max_flow along path so far
+    parent_edges = [-1] * len(graph.edges)
+    incoming_edge = -1
+    q.put( (S, incoming_edge, max_possible_flow) )
     visited_edges = set()
     while not q.empty():
-        node_id, edges_in_path, nodes_in_path, max_flow_in_path = q.get()
+        node_id, incoming_edge, max_flow_in_path = q.get()
         #print("looking at node", node_id)
-        #node_id, edges_in_path, max_flow_in_path = q.get()
+
         #find all neighbors of this node, and add those neighbors to the queue that have available capacity
         neighboring_edge_ids = graph.get_ids(node_id) # finds all outgoing edges
         for ne_id in neighboring_edge_ids:
@@ -85,50 +146,55 @@ def bfs(graph, S, T):
                 continue
             visited_edges.add(ne_id)
             ne = graph.get_edge(ne_id)
-            if ne.u == ne.v:
-                continue # ignore edges looping back to same node!
-            if ne.v in nodes_in_path:
-                #print("node {} already visited".format(ne.v))
-                continue
-            #visited_nodes.add(ne.v)
+            #if ne.u == ne.v:
+            #    continue # ignore edges looping back to same node!
+
             avail_capacity = ne.capacity - ne.flow
             if avail_capacity > 0:
-                new_edges_in_path = edges_in_path.copy()
-                new_edges_in_path.append(ne_id)
-                new_max_flow_in_path = max_flow_in_path
-                if avail_capacity < max_flow_in_path:
-                    #print("avail_capacity '{}' between nodes {} and {} is lower than current path capacity {}".format(
-                    #    avail_capacity, ne.u+1, ne.v+1, max_flow_in_path
-                    #))
-                    new_max_flow_in_path = avail_capacity
-
+            #if ne.flow == 0:
+                parent_edges[ne_id] = incoming_edge
+                #new_max_flow_in_path = min(avail_capacity, max_flow_in_path)
+                #new_max_flow_in_path = max_flow_in_path
+                #if avail_capacity < max_flow_in_path:
+                #    #print("avail_capacity '{}' between nodes {} and {} is lower than current path capacity {}".format(
+                #    #    avail_capacity, ne.u+1, ne.v+1, max_flow_in_path
+                #    #))
+                #    new_max_flow_in_path = avail_capacity
                 if ne.v == T:
-                    #print("new_nodes_in_path", new_nodes_in_path)
-                    return new_edges_in_path, new_max_flow_in_path
+                    #return parent_edges, ne_id, new_max_flow_in_path
+                    return parent_edges, ne_id, max_flow_in_path
 
-                new_nodes_in_path = nodes_in_path.copy()
-                new_nodes_in_path.append(ne.v)
-                q.put( (ne.v, new_edges_in_path, new_nodes_in_path, max_flow_in_path) )
-                #q.put( (ne.v, new_edges_in_path, nodes_in_path, max_flow_in_path) )
-                #q.put( (ne.v, new_edges_in_path, new_max_flow_in_path) )
-                #print("path so far", new_nodes_in_path)
+                #q.put( (ne.v, ne_id, new_max_flow_in_path) )
+                q.put( (ne.v, ne_id, max_flow_in_path) )
                 
 
     #print("no viable route found from S to T")
-    return [],0
+    return parent_edges, -1, 0
 
 
 def max_flow(graph, from_, to_):
+    global prev_time
     flow = 0
     # your code goes here
     while True:
         # find S -> T path using BFS
-        edges_in_path,max_flow_in_path = bfs(graph, from_, to_)
-        if len(edges_in_path) == 0:
+        parent_edges, last_edge, max_flow_in_path = dfs(graph, from_, to_)
+        #a = datetime.datetime.now()
+        #print("{} BFS returned".format(a - prev_time))
+        #prev_time = a
+        if last_edge == -1:
             return flow
-        for edge_id in edges_in_path:
+        
+        # starting with the last_edge, traverse back to first edge
+        prev_edge_id = last_edge
+        while prev_edge_id != -1:
             #print("adding flow")
-            graph.add_flow(edge_id, max_flow_in_path)
+            graph.add_flow(prev_edge_id, max_flow_in_path)
+            prev_edge_id = parent_edges[prev_edge_id]
+
+        #a = datetime.datetime.now()
+        #print("{} updated flows".format(a - prev_time))
+        #prev_time = a
 
         flow += max_flow_in_path
 
@@ -153,6 +219,7 @@ class MaxMatching:
         print(' '.join(line))
 
     def find_matching(self, adj_matrix):
+        global prev_time
         # Replace this code with an algorithm that finds the maximum
         # matching correctly in all cases.
         n = len(adj_matrix)
@@ -165,22 +232,31 @@ class MaxMatching:
         graph = FlowGraph(vertex_count)
         for j in range(m-1, -1, -1):
             graph.add_edge(n+j+1, T, 1) # adding edges from vertices in right column to T
+            #graph.add_fwd_edge(n+j+1, T, 1) # adding edges from vertices in right column to T
 
-        for i in range(n-1, -1, -1):
+        for i in range(0, n, 1):
             for j in range(m-1, -1, -1):
                 if adj_matrix[i][j]:
                     graph.add_edge(i+1, n+j+1, 1) # adding edges from left column to right column
+                    #graph.add_fwd_edge(i+1, n+j+1, 1) # adding edges from left column to right column
 
-        for i in range(n-1, -1, -1):
+        for i in range(0, n, 1):
             graph.add_edge(0, i+1, 1) # adding edges from S to vertices in left column of bipartite graph
+            #graph.add_fwd_edge(0, i+1, 1) # adding edges from S to vertices in left column of bipartite graph
         
-        
+        # now adding the reverse edges
+        #graph.add_rev_edges()
+
         #graph.print_edges()
-        print("{} created graph".format(datetime.datetime.now()))
+        #print("-----------------------------------------------------------------")
+        #graph.print_edges_by_node()
+        #a = datetime.datetime.now()
+        #print("{} created graph".format(a - prev_time))
+        #prev_time = a
 
         # now find max flow
         num_matches = max_flow(graph, S, T)
-        print("{} num_matches={}".format(datetime.datetime.now(), num_matches))
+        #print("{} num_matches={}".format(datetime.datetime.now(), num_matches))
         #graph.print_edges()
 
         # now to find all edges with flow = 1 going from vertex in left column to a vertex in right column
@@ -207,8 +283,10 @@ def main():
 
 
 if __name__ == '__main__':
-    a = datetime.datetime.now()
-    print("{} started".format(datetime.datetime.now()))
+    #global prev_time
+    #a = datetime.datetime.now()
+    #print("{} started".format(a - prev_time))
+    #prev_time = a
     main()
-    print("{} finished".format(datetime.datetime.now()))
-    print("time taken: ", datetime.datetime.now() - a)
+    #print("{} finished".format(datetime.datetime.now()))
+    #print("time taken: ", datetime.datetime.now() - a)
