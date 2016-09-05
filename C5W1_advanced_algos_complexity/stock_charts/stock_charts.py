@@ -77,12 +77,14 @@ class FlowGraph:
             #if edge.capacity:
             print("{} ----{}/{}---> {}".format(edge.u, edge.flow, edge.capacity, edge.v))
 
-    def print_edges_by_node(self):
+    def print_edges_by_node(self, all_flow=False):
         for node_id in range(self.size()):
             edge_ids = self.get_ids(node_id)
             for edge_id in edge_ids:
                 edge = self.get_edge(edge_id)
-                print("{} ----{}/{}---> {}".format(edge.u, edge.flow, edge.capacity, edge.v))
+                if edge.capacity:
+                    if all_flow or edge.flow:
+                        print("{} ----{}/{}---> {}".format(edge.u, edge.flow, edge.capacity, edge.v))
 
 def dfs(graph, S, T):
     """DFS to get from node S to node T, given a graph. Made specifically for bipartite graph"""
@@ -167,25 +169,28 @@ class StockCharts:
         pairwise_compatible[stock_a].add(stock_b)
         pairwise_compatible[stock_b].add(stock_a)
 
+    def ordered_pairwise_compatible(self, pairwise_compatible, stock_data, stock_a, stock_b):
+        above = all([x > y for x, y in zip(stock_data[stock_a], stock_data[stock_b])])
+        below = all([x < y for x, y in zip(stock_data[stock_a], stock_data[stock_b])])
+        #print(stock_data[stock_a])
+        #print(stock_data[stock_b])
+        #print(above, below)
+        if above:
+            pairwise_compatible[stock_a].add(stock_b)
+            pairwise_compatible[stock_b].add(stock_a)
+            return stock_b, stock_a
+        elif below:
+            pairwise_compatible[stock_a].add(stock_b)
+            pairwise_compatible[stock_b].add(stock_a)
+            return stock_a, stock_b
+        else:
+            return None, None
+
     def min_charts(self, stock_data):
-        # Replace this incorrect greedy algorithm with an
-        # algorithm that correctly finds the minimum number
-        # of charts on which we can put all the stock data
-        # without intersections of graphs on one chart.
         n = len(stock_data)
         k = len(stock_data[0])
         charts = []
-
-        # for each stock, let's make a set of stocks it is pair-wise compatible with
         pairwise_compatible = [set() for _ in range(n)]
-        for stock_a in range(n):
-            for stock_b in range(n):
-                if stock_a == stock_b:
-                    continue # obviously, a stock is not compatible with itself as every point in the chart will overlap!
-                if stock_b in pairwise_compatible[stock_a]:
-                    continue # nothing to do as these stocks are already compatible
-                self.update_pairwise_compatible(pairwise_compatible, stock_data, stock_a, stock_b)
-
         # now let's create a S stock and a T stock and create edges to create a flow graph
         # bi-partite graph has n stocks in left column with IDs going from 0 to n-1
         # and same n stocks in right column with IDs going from n to 2n-1
@@ -199,10 +204,17 @@ class StockCharts:
         # so, later we'll ignore the first 2 * 2n edges as they connect to S or T fwd and backwards
         # now add edges betwen left and right columns
         for stock_a in range(n):
-            set_a = pairwise_compatible[stock_a]
-            for stock_b in set_a:
-                graph.add_edge(stock_a, n + stock_b, 1)
-        
+            for stock_b in range(n):
+                stock_lower, stock_higher = self.ordered_pairwise_compatible(pairwise_compatible, stock_data, stock_a, stock_b)
+                if stock_lower != None:
+                    graph.add_edge(stock_lower, n + stock_higher, 1)
+                    #graph.add_edge(stock_higher, n + stock_lower, 1)
+                #else:
+                #    print("stock_a={} is not compatible with stock_b={}".format(stock_a, stock_b))
+                #    #print(stock_data[stock_a])
+                #    #print(stock_data[stock_b])
+
+        #graph.print_edges_by_node(True)
         # now find max flow. This is equivalent to finding max_matching
         num_matches = max_flow(graph, S, T)
 
@@ -221,10 +233,10 @@ class StockCharts:
                 matching_stocks.add(edge.u)
                 matching_stocks.add(edge.v - n)
                 pp(matching_stocks)
+        
+        #graph.print_edges_by_node()
 
-        pp("matching_groups")
-        pp(matching_groups)
-        #now, using disjoint set logic, merge sets
+                #now, using disjoint set logic, merge sets
         for i in range(len(matching_groups)):
             set_a = matching_groups[i]
             for j in range(len(matching_groups)):
@@ -248,15 +260,50 @@ class StockCharts:
 
                     print("after: set_a={} set_b={}".format(set_a, set_b))
 
-        final_group_num = len([1 for i in matching_groups if len(i) > 0])
-        # don't forget to add the remaining un-matched stocks into their own charts!!
-        num_remaining_stocks = len(all_stocks - matching_stocks)
-        pp(all_stocks)
-        pp(matching_stocks)
-        pp(matching_groups)
+        
+        final_groups = [i for i in matching_groups if len(i) > 0]
+        final_group_num = len(final_groups)
+        remaining_stocks = all_stocks - matching_stocks
 
-        # now merge these groups using disjoint sets logic
-        return final_group_num + num_remaining_stocks
+        print("final groups", final_groups)
+        print("remaining_stocks", remaining_stocks)
+        # don't forget to add the remaining un-matched stocks into their own charts!!
+        num_remaining_stocks = len(remaining_stocks)
+
+        return num_remaining_stocks + final_group_num
+        #return(len(charts))
+
+    def min_charts_2(self, stock_data):
+        # Replace this incorrect greedy algorithm with an
+        # algorithm that correctly finds the minimum number
+        # of charts on which we can put all the stock data
+        # without intersections of graphs on one chart.
+        n = len(stock_data)
+        k = len(stock_data[0])
+        charts = []
+        for new_stock_id, new_stock in enumerate(stock_data):
+            added = False
+            for chart in charts:
+                fits = True
+                for stock_id, stock in chart:
+                    above = all([x > y for x, y in zip(new_stock, stock)])
+                    below = all([x < y for x, y in zip(new_stock, stock)])
+                    if (not above) and (not below):
+                        fits = False
+                        break
+                if fits:
+                    added = True
+                    print("stocks {} and {} fit".format(new_stock_id, stock_id))
+                    chart.append( (new_stock_id, new_stock) )
+                    break
+            if not added:
+                charts.append( [ (new_stock_id, new_stock) ] )
+        for chart in charts:
+            stocks_in_chart = []
+            for stock_id, stock in chart:
+                stocks_in_chart.append(stock_id)
+            print("stocks in chart = {}".format(stocks_in_chart))
+        return len(charts)
 
     def min_charts_orig(self, stock_data):
         # Replace this incorrect greedy algorithm with an
