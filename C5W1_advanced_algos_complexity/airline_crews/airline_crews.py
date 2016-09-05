@@ -4,6 +4,9 @@
 # using DSF Good job! (Max time used: 3.31/5.00, max memory used: 14782464/536870912.)
 # using modified Queue in BFS Good job!
 #                     (Max time used: 0.89/5.00, max memory used: 15273984/536870912.)
+# latest DFS Good job! (Max time used: 1.70/5.00, max memory used: 14786560/536870912.)
+# latest BFS Good job! (Max time used: 2.04/5.00, max memory used: 15486976/536870912.)
+
 
 
 import queue
@@ -93,7 +96,7 @@ class FlowGraph:
                 edge = self.get_edge(edge_id)
                 print("{} ----{}/{}---> {}".format(edge.u, edge.flow, edge.capacity, edge.v))
 
-def dfs(graph, S, T):
+def dfs(graph, S, T, qsize):
     """DFS to get from node S to node T, given a graph. Made specifically for bipartite graph"""
     max_flow_in_path = 1 # since this bipartite graph, all edges have capacity 1
     stack = [] # DFS... so using stack
@@ -101,10 +104,10 @@ def dfs(graph, S, T):
     incoming_edge = -1
     stack.append( (S, incoming_edge) )
     visited_edges = set()
-    num_pops = 0 # a way to track depth of path
+    #num_pops = 0 # a way to track depth of path
     while len(stack):
         node_id, incoming_edge = stack.pop()
-        num_pops += 1
+        #num_pops += 1
 
         neighboring_edge_ids = graph.get_ids(node_id) # finds all outgoing edges
         for ne_id in neighboring_edge_ids:
@@ -118,7 +121,7 @@ def dfs(graph, S, T):
             if avail_capacity > 0:
                 parent_edges[ne_id] = incoming_edge
                 if ne.v == T:
-                    print("num_pops", num_pops)
+                    #print("num_pops", num_pops)
                     return parent_edges, ne_id, max_flow_in_path
 
                 stack.append( (ne.v, ne_id) )
@@ -126,7 +129,7 @@ def dfs(graph, S, T):
     return parent_edges, -1, 0
 
 
-def bfs(graph, S, T, qsize):
+def bfs_builtin_queue(graph, S, T, qsize):
     """finds shortest viable path from node_0 to node_n
        given a graph, finds the path with least number of viable edges, from S to T
        only edges that are not saturated are considered viable
@@ -134,24 +137,23 @@ def bfs(graph, S, T, qsize):
     #print("S={}, T={}".format(S, T))
     max_possible_flow = 1 #2 * 10 ** 8
     #q = queue.Queue(maxsize=qsize)
-    #q = queue.Queue()
-    q = [None] * qsize
-    q_enq_pointer = 0
-    q_deq_pointer = 0
+    q = queue.Queue()
+    #q = [None] * qsize
+    #q_enq_pointer = 0
+    #q_deq_pointer = 0
     parent_edges = [-1] * len(graph.edges)
     incoming_edge = -1
-    #q.put( (S, incoming_edge, max_possible_flow) )
-    q[q_enq_pointer] = (S, incoming_edge, max_possible_flow)
-    q_enq_pointer += 1
+    q.put( (S, incoming_edge, max_possible_flow) )
+    #q[q_enq_pointer] = (S, incoming_edge, max_possible_flow)
+    #q_enq_pointer += 1
     visited_edges = set()
-    num_dequeues = 0
-    num_enqueues = 1
-    num_checks = 0
-    #while not q.empty():
-    while q_enq_pointer > q_deq_pointer:
-        #node_id, incoming_edge, max_flow_in_path = q.get()
-        node_id, incoming_edge, max_flow_in_path = q[q_deq_pointer]
-        q_deq_pointer += 1
+
+    #num_checks = 0
+    while not q.empty():
+    #while q_enq_pointer > q_deq_pointer:
+        node_id, incoming_edge, max_flow_in_path = q.get()
+        #node_id, incoming_edge, max_flow_in_path = q[q_deq_pointer]
+        #q_deq_pointer += 1
         #num_dequeues += 1
         #print("looking at node", node_id)
 
@@ -169,7 +171,7 @@ def bfs(graph, S, T, qsize):
             #    continue # ignore edges looping back to same node!
 
             avail_capacity = ne.capacity - ne.flow
-            num_checks += 1
+            #num_checks += 1
             if avail_capacity > 0:
             #if ne.flow == 0:
                 parent_edges[ne_id] = incoming_edge
@@ -188,10 +190,64 @@ def bfs(graph, S, T, qsize):
                     return parent_edges, ne_id, max_flow_in_path
 
                 #q.put( (ne.v, ne_id, new_max_flow_in_path) )
-                #q.put( (outgoing_node, ne_id, max_flow_in_path) )
+                q.put( (outgoing_node, ne_id, max_flow_in_path) )
+                #q[q_enq_pointer] = (outgoing_node, ne_id, max_flow_in_path)
+                #q_enq_pointer += 1
+                #num_enqueues += 1
+                
+
+    #print("no viable route found from S to T")
+    return parent_edges, -1, 0
+
+
+def bfs(graph, S, T, qsize):
+    """finds shortest viable path from node_0 to node_n
+       given a graph, finds the path with least number of viable edges, from S to T
+       only edges that are not saturated are considered viable
+    """
+    #print("S={}, T={}".format(S, T))
+    max_possible_flow = 1 #2 * 10 ** 8
+
+    q = [None] * qsize
+    q_enq_pointer = 0
+    q_deq_pointer = 0
+    
+    parent_edges = [-1] * len(graph.edges)
+    incoming_edge = -1
+    
+    q[q_enq_pointer] = (S, incoming_edge, max_possible_flow)
+    q_enq_pointer += 1
+    
+    visited_edges = set()
+
+    #num_checks = 0
+    while q_enq_pointer > q_deq_pointer:
+        node_id, incoming_edge, max_flow_in_path = q[q_deq_pointer]
+        q_deq_pointer += 1
+
+        #find all neighbors of this node, and add to the queue, those neighbors that have available capacity
+        neighboring_edge_ids = graph.get_ids(node_id) # finds all outgoing edges
+        for ne_id in neighboring_edge_ids:
+            if ne_id in visited_edges:
+                #print("edge {} already visited".format(ne_id))
+                continue
+            visited_edges.add(ne_id)
+            ne = graph.get_edge(ne_id)
+            #if ne.u == ne.v:
+            #    continue # ignore edges looping back to same node!
+
+            avail_capacity = ne.capacity - ne.flow
+            #num_checks += 1
+            if avail_capacity > 0:
+                parent_edges[ne_id] = incoming_edge
+                outgoing_node = ne.v
+                if outgoing_node == T:
+                    #print("num_dequeues = {}, num_enqueues = {}, num_checks = {}".format(
+                    #    q_deq_pointer, q_enq_pointer, num_checks))
+                    return parent_edges, ne_id, max_flow_in_path
+
                 q[q_enq_pointer] = (outgoing_node, ne_id, max_flow_in_path)
                 q_enq_pointer += 1
-                #num_enqueues += 1
                 
 
     #print("no viable route found from S to T")
@@ -202,10 +258,12 @@ def max_flow(graph, from_, to_):
     global prev_time
     flow = 0
     # your code goes here
+
+    #qsize = (graph.size/2) ** 2 + 2 * (graph.size/2) # this is the maximum number of possible edges
+    qsize = len(graph.edges)//2
+
     while True:
         # find S -> T path using BFS
-        #qsize = (graph.size/2) ** 2 + 2 * (graph.size/2) # this is the maximum number of possible edges
-        qsize = len(graph.edges)//2
         #print("qsize",qsize)
         parent_edges, last_edge, max_flow_in_path = bfs(graph, from_, to_, qsize)
         #a = datetime.datetime.now()
@@ -216,12 +274,12 @@ def max_flow(graph, from_, to_):
         
         # starting with the last_edge, traverse back to first edge
         prev_edge_id = last_edge
-        path_length = 1
+        #path_length = 1
         while prev_edge_id != -1:
             #print("adding flow")
             graph.add_flow(prev_edge_id, max_flow_in_path)
             prev_edge_id = parent_edges[prev_edge_id]
-            path_length += 1
+            #path_length += 1
 
         #print("path_length", path_length)
         #a = datetime.datetime.now()
