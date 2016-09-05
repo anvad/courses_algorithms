@@ -1,5 +1,7 @@
 # python3
 
+# Good job! (Max time used: 0.16/10.00, max memory used: 8925184/536870912.)
+
 from pprint import pprint as pp
 
 class Edge:
@@ -218,60 +220,25 @@ class StockCharts:
         # now find max flow. This is equivalent to finding max_matching
         num_matches = max_flow(graph, S, T)
 
-        # now to find all edges with flow = 1 going from vertex in left column to a vertex in right column
-        # so, ignore first 2*2n edges (connect to S and T), as well as every odd numbered edge (as those are backward pointing)
-        first_edge = 4 * n
-        last_edge = len(graph.edges)
-        matching_groups = [] # contains lists of matching edges. initally, pairs of vertices on either end of a mathing edge
-        all_stocks = set(range(n))
-        matching_stocks = set()
-        pp(matching_stocks)
-        for edge_id in range(first_edge, last_edge, 2):
-            edge = graph.edges[edge_id]
-            if edge.flow == 1:
-                matching_groups.append(set([edge.u, edge.v - n]))
-                matching_stocks.add(edge.u)
-                matching_stocks.add(edge.v - n)
-                pp(matching_stocks)
-        
-        #graph.print_edges_by_node()
+        # now to find the different groups of stocks
+        outgoing_edge_ids = graph.get_ids(S) # let's only look at connections from source to left column
+        for outgoing_edge_id in outgoing_edge_ids:
+            outgoing_edge = graph.get_edge(outgoing_edge_id)
+            if outgoing_edge.flow == 0: # this only finds nodes in left column that aren't going anywhere
+                # first add the highest stock (in each chart) to charts list
+                charts.append( [ outgoing_edge.v ] )
 
-                #now, using disjoint set logic, merge sets
-        for i in range(len(matching_groups)):
-            set_a = matching_groups[i]
-            for j in range(len(matching_groups)):
-                set_b = matching_groups[j]
-                print("before: set_a={} set_b={}".format(set_a, set_b))
-                if set_a is set_b:
-                    continue
-                if set_a.intersection(set_b):
-                    new_points = set_b - set_a
-                    set_b.clear()
-                    for new_point in new_points:
-                        b_compatible = True
-                        for point in set_a:
-                            if (point != new_point) and (point not in pairwise_compatible[new_point]):
-                                # it means new_point is not compatible with set_a, so leave point in set_b
-                                set_b.add(new_point)
-                                b_compatible = False
-                                break
-                        if b_compatible:
-                            set_a.add(new_point)
+        ## now adding all the lower charts in the chain, to each chart
+        #for chart in charts:
+        #    for stock_a in chart:
+        #        outgoing_edge_ids = graph.get_ids(stock_a)
+        #        for outgoing_edge_id in outgoing_edge_ids:
+        #            outgoing_edge = graph.get_edge(outgoing_edge_id)
+        #            if outgoing_edge.capacity and outgoing_edge.flow == 0:
+        #                # first add all the highest stocks to charts
+        #                charts.append( [ new_stock_id ] )
 
-                    print("after: set_a={} set_b={}".format(set_a, set_b))
-
-        
-        final_groups = [i for i in matching_groups if len(i) > 0]
-        final_group_num = len(final_groups)
-        remaining_stocks = all_stocks - matching_stocks
-
-        print("final groups", final_groups)
-        print("remaining_stocks", remaining_stocks)
-        # don't forget to add the remaining un-matched stocks into their own charts!!
-        num_remaining_stocks = len(remaining_stocks)
-
-        return num_remaining_stocks + final_group_num
-        #return(len(charts))
+        return len(charts)
 
     def min_charts_2(self, stock_data):
         # Replace this incorrect greedy algorithm with an
