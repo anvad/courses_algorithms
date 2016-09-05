@@ -2,6 +2,9 @@
 
 # using BFS Good job! (Max time used: 3.82/5.00, max memory used: 15478784/536870912.)
 # using DSF Good job! (Max time used: 3.31/5.00, max memory used: 14782464/536870912.)
+# using modified Queue in BFS Good job!
+#                     (Max time used: 0.89/5.00, max memory used: 15273984/536870912.)
+
 
 import queue
 import datetime
@@ -98,8 +101,10 @@ def dfs(graph, S, T):
     incoming_edge = -1
     stack.append( (S, incoming_edge) )
     visited_edges = set()
+    num_pops = 0 # a way to track depth of path
     while len(stack):
         node_id, incoming_edge = stack.pop()
+        num_pops += 1
 
         neighboring_edge_ids = graph.get_ids(node_id) # finds all outgoing edges
         for ne_id in neighboring_edge_ids:
@@ -113,6 +118,7 @@ def dfs(graph, S, T):
             if avail_capacity > 0:
                 parent_edges[ne_id] = incoming_edge
                 if ne.v == T:
+                    print("num_pops", num_pops)
                     return parent_edges, ne_id, max_flow_in_path
 
                 stack.append( (ne.v, ne_id) )
@@ -120,20 +126,33 @@ def dfs(graph, S, T):
     return parent_edges, -1, 0
 
 
-def bfs(graph, S, T):
+def bfs(graph, S, T, qsize):
     """finds shortest viable path from node_0 to node_n
        given a graph, finds the path with least number of viable edges, from S to T
        only edges that are not saturated are considered viable
     """
     #print("S={}, T={}".format(S, T))
     max_possible_flow = 1 #2 * 10 ** 8
-    q = queue.Queue()
+    #q = queue.Queue(maxsize=qsize)
+    #q = queue.Queue()
+    q = [None] * qsize
+    q_enq_pointer = 0
+    q_deq_pointer = 0
     parent_edges = [-1] * len(graph.edges)
     incoming_edge = -1
-    q.put( (S, incoming_edge, max_possible_flow) )
+    #q.put( (S, incoming_edge, max_possible_flow) )
+    q[q_enq_pointer] = (S, incoming_edge, max_possible_flow)
+    q_enq_pointer += 1
     visited_edges = set()
-    while not q.empty():
-        node_id, incoming_edge, max_flow_in_path = q.get()
+    num_dequeues = 0
+    num_enqueues = 1
+    num_checks = 0
+    #while not q.empty():
+    while q_enq_pointer > q_deq_pointer:
+        #node_id, incoming_edge, max_flow_in_path = q.get()
+        node_id, incoming_edge, max_flow_in_path = q[q_deq_pointer]
+        q_deq_pointer += 1
+        #num_dequeues += 1
         #print("looking at node", node_id)
 
         #find all neighbors of this node, and add those neighbors to the queue that have available capacity
@@ -150,9 +169,11 @@ def bfs(graph, S, T):
             #    continue # ignore edges looping back to same node!
 
             avail_capacity = ne.capacity - ne.flow
+            num_checks += 1
             if avail_capacity > 0:
             #if ne.flow == 0:
                 parent_edges[ne_id] = incoming_edge
+                outgoing_node = ne.v
                 #new_max_flow_in_path = min(avail_capacity, max_flow_in_path)
                 #new_max_flow_in_path = max_flow_in_path
                 #if avail_capacity < max_flow_in_path:
@@ -160,12 +181,17 @@ def bfs(graph, S, T):
                 #    #    avail_capacity, ne.u+1, ne.v+1, max_flow_in_path
                 #    #))
                 #    new_max_flow_in_path = avail_capacity
-                if ne.v == T:
+                if outgoing_node == T:
                     #return parent_edges, ne_id, new_max_flow_in_path
+                    #print("num_dequeues = {}, num_enqueues = {}, num_checks = {}".format(
+                    #    q_deq_pointer, q_enq_pointer, num_checks))
                     return parent_edges, ne_id, max_flow_in_path
 
                 #q.put( (ne.v, ne_id, new_max_flow_in_path) )
-                q.put( (ne.v, ne_id, max_flow_in_path) )
+                #q.put( (outgoing_node, ne_id, max_flow_in_path) )
+                q[q_enq_pointer] = (outgoing_node, ne_id, max_flow_in_path)
+                q_enq_pointer += 1
+                #num_enqueues += 1
                 
 
     #print("no viable route found from S to T")
@@ -178,20 +204,26 @@ def max_flow(graph, from_, to_):
     # your code goes here
     while True:
         # find S -> T path using BFS
-        parent_edges, last_edge, max_flow_in_path = dfs(graph, from_, to_)
+        #qsize = (graph.size/2) ** 2 + 2 * (graph.size/2) # this is the maximum number of possible edges
+        qsize = len(graph.edges)//2
+        #print("qsize",qsize)
+        parent_edges, last_edge, max_flow_in_path = bfs(graph, from_, to_, qsize)
         #a = datetime.datetime.now()
         #print("{} BFS returned".format(a - prev_time))
-        #prev_time = a
+        prev_time = a
         if last_edge == -1:
             return flow
         
         # starting with the last_edge, traverse back to first edge
         prev_edge_id = last_edge
+        path_length = 1
         while prev_edge_id != -1:
             #print("adding flow")
             graph.add_flow(prev_edge_id, max_flow_in_path)
             prev_edge_id = parent_edges[prev_edge_id]
+            path_length += 1
 
+        #print("path_length", path_length)
         #a = datetime.datetime.now()
         #print("{} updated flows".format(a - prev_time))
         #prev_time = a
@@ -230,12 +262,12 @@ class MaxMatching:
         S = 0
         T = m + n + 1
         graph = FlowGraph(vertex_count)
-        for j in range(m-1, -1, -1):
+        for j in range(0, m, 1):
             graph.add_edge(n+j+1, T, 1) # adding edges from vertices in right column to T
             #graph.add_fwd_edge(n+j+1, T, 1) # adding edges from vertices in right column to T
 
         for i in range(0, n, 1):
-            for j in range(m-1, -1, -1):
+            for j in range(0, m, 1):
                 if adj_matrix[i][j]:
                     graph.add_edge(i+1, n+j+1, 1) # adding edges from left column to right column
                     #graph.add_fwd_edge(i+1, n+j+1, 1) # adding edges from left column to right column
@@ -284,7 +316,7 @@ def main():
 
 if __name__ == '__main__':
     #global prev_time
-    #a = datetime.datetime.now()
+    a = datetime.datetime.now()
     #print("{} started".format(a - prev_time))
     #prev_time = a
     main()

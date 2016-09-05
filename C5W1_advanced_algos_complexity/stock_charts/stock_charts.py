@@ -1,6 +1,8 @@
 # python3
 
 # Good job! (Max time used: 0.16/10.00, max memory used: 8925184/536870912.)
+# Good job! (Max time used: 0.08/10.00, max memory used: 8925184/536870912.) 
+#    here, I don't even bother finding exact stocks that make up each chart, i just return n - nummatches
 
 from pprint import pprint as pp
 
@@ -202,6 +204,7 @@ class StockCharts:
         graph = FlowGraph(vertex_count)
         for i in range(0, n, 1):
             graph.add_edge(S, i, 1) # adding edges from S to vertices in left column of bipartite graph
+        for i in range(0, n, 1):
             graph.add_edge(n + i, T, 1) # adding edges from vertices in right column of bipartite graph
         # so, later we'll ignore the first 2 * 2n edges as they connect to S or T fwd and backwards
         # now add edges betwen left and right columns
@@ -210,7 +213,6 @@ class StockCharts:
                 stock_lower, stock_higher = self.ordered_pairwise_compatible(pairwise_compatible, stock_data, stock_a, stock_b)
                 if stock_lower != None:
                     graph.add_edge(stock_lower, n + stock_higher, 1)
-                    #graph.add_edge(stock_higher, n + stock_lower, 1)
                 #else:
                 #    print("stock_a={} is not compatible with stock_b={}".format(stock_a, stock_b))
                 #    #print(stock_data[stock_a])
@@ -221,24 +223,31 @@ class StockCharts:
         num_matches = max_flow(graph, S, T)
 
         # now to find the different groups of stocks
-        outgoing_edge_ids = graph.get_ids(S) # let's only look at connections from source to left column
-        for outgoing_edge_id in outgoing_edge_ids:
-            outgoing_edge = graph.get_edge(outgoing_edge_id)
-            if outgoing_edge.flow == 0: # this only finds nodes in left column that aren't going anywhere
-                # first add the highest stock (in each chart) to charts list
-                charts.append( [ outgoing_edge.v ] )
-
-        ## now adding all the lower charts in the chain, to each chart
+        # let's only look at connections from right column to terminating node
+        # this will get me the lowest stock in each chart
+        #for edge_id in range(2*n, 4*n, 2):
+        #    edge = graph.get_edge(edge_id)
+        #    #print("looking at edge {} ---{}/{}---> {}".format(edge.v - n, edge.flow, edge.capacity, edge.u))
+        #    if edge.flow == 0: # this implies this is the lowest node in the groups of stocks on this chart
+        #        charts.append( [edge.u - n] )
+        #
+        ## now to traverse the graph to find all other stocks in each charts
         #for chart in charts:
-        #    for stock_a in chart:
+        #    stock_a = chart[0] # at this point, chart has only the lowest stock in it
+        #    while stock_a != None:
         #        outgoing_edge_ids = graph.get_ids(stock_a)
+        #        stock_a = None
         #        for outgoing_edge_id in outgoing_edge_ids:
         #            outgoing_edge = graph.get_edge(outgoing_edge_id)
-        #            if outgoing_edge.capacity and outgoing_edge.flow == 0:
-        #                # first add all the highest stocks to charts
-        #                charts.append( [ new_stock_id ] )
-
-        return len(charts)
+        #            if outgoing_edge.capacity and outgoing_edge.flow: # this only finds forward edges that have flow
+        #                                                              # in fact, there should be only one edge, per node that has flow!
+        #                # add this stock to the chart, and follow the link to the next stock
+        #                stock_a = outgoing_edge.v - n
+        #                chart.append(stock_a)
+        #                break
+        #pp(charts)
+        #return len(charts)
+        return n - num_matches
 
     def min_charts_2(self, stock_data):
         # Replace this incorrect greedy algorithm with an
