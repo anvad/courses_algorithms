@@ -1,17 +1,22 @@
 # python3
 
+# Good job! (Max time used: 0.04/5.00, max memory used: 8781824/536870912.)
+
 EPS = 1e-6
 PRECISION = 20
+
 
 class Equation:
     def __init__(self, a, b):
         self.a = a
         self.b = b
 
+
 class Position:
     def __init__(self, column, row):
         self.column = column
         self.row = row
+
 
 def ReadEquation():
     size = int(input())
@@ -23,6 +28,7 @@ def ReadEquation():
         b.append(line[size])
     return Equation(a, b)
 
+
 def SelectPivotElement(a, used_rows, used_columns):
     # This algorithm selects the first free element.
     # You'll need to improve it to pass the problem.
@@ -31,7 +37,19 @@ def SelectPivotElement(a, used_rows, used_columns):
         pivot_element.row += 1
     while used_columns[pivot_element.column]:
         pivot_element.column += 1
+
+    # at this point, the selected pivot_element might have value 0. 
+    # so, we might need to swap rows till we arrive at a non-zero pivot element
+    size = len(a)
+    while size > (pivot_element.row + 1):
+        if a[pivot_element.row][pivot_element.column] == 0:
+            pivot_element.row += 1
+        else:
+            break
+
+    #print("pivot_element is ({},{}) = {}".format(pivot_element.row, pivot_element.column, a[pivot_element.row][pivot_element.column]))
     return pivot_element
+
 
 def SwapLines(a, b, used_rows, pivot_element):
     a[pivot_element.column], a[pivot_element.row] = a[pivot_element.row], a[pivot_element.column]
@@ -39,13 +57,32 @@ def SwapLines(a, b, used_rows, pivot_element):
     used_rows[pivot_element.column], used_rows[pivot_element.row] = used_rows[pivot_element.row], used_rows[pivot_element.column]
     pivot_element.row = pivot_element.column;
 
+
 def ProcessPivotElement(a, b, pivot_element):
     # Write your code here
-    pass
+    pivot_row = pivot_element.row
+    pivot_col = pivot_element.column
+    divisor = a[pivot_row][pivot_col]
+
+    # divide pivot row by divisor, so pivot_element scales to 1
+    a[pivot_row] = [a_p_el/divisor for a_p_el in a[pivot_row]]
+    b[pivot_row] = b[pivot_row]/divisor
+    
+    # substitute into other equations (i.e rows). This will make the pivot_col entry in all rows = 0
+    for row_id in range(len(a)):
+        if row_id == pivot_row:
+            continue
+        row_multiplier = a[row_id][pivot_col]
+        a[row_id] = [a_r_el - (row_multiplier * a_p_el) for a_r_el, a_p_el in zip(a[row_id], a[pivot_row])]
+        b[row_id] = b[row_id] - (row_multiplier * b[pivot_row])
+
+    #print("a after processing: ", a)
+
 
 def MarkPivotElementUsed(pivot_element, used_rows, used_columns):
     used_rows[pivot_element.row] = True
     used_columns[pivot_element.column] = True
+
 
 def SolveEquation(equation):
     a = equation.a
@@ -62,13 +99,21 @@ def SolveEquation(equation):
 
     return b
 
+
 def PrintColumn(column):
     size = len(column)
     for row in range(size):
         print("%.20lf" % column[row])
 
-if __name__ == "__main__":
+
+def main():
     equation = ReadEquation()
+    #print("a= ", equation.a)
+    #print("b= ", equation.b)
     solution = SolveEquation(equation)
     PrintColumn(solution)
     exit(0)
+
+
+if __name__ == "__main__":
+    main()
